@@ -1,12 +1,14 @@
 # -*- coding: utf-8
 
-import pycurl
 import os
 import shutil
 import threading
-import lxml.etree as etree
 from io import BytesIO
 from re import sub
+
+import lxml.etree as etree
+import pycurl
+
 from webdav.connection import *
 from webdav.exceptions import *
 from webdav.urn import Urn
@@ -20,7 +22,6 @@ __version__ = "1.0.8"
 
 
 def listdir(directory):
-
     file_names = list()
     for filename in os.listdir(directory):
         file_path = os.path.join(directory, filename)
@@ -31,7 +32,6 @@ def listdir(directory):
 
 
 def add_options(request, options):
-
     for (key, value) in options.items():
         if value is None:
             continue
@@ -44,7 +44,6 @@ def add_options(request, options):
 
 
 def get_options(type, from_options):
-
     _options = dict()
 
     for key in type.keys:
@@ -60,7 +59,6 @@ def get_options(type, from_options):
 
 
 class Client(object):
-
     root = '/'
     large_size = 2 * 1024 * 1024 * 1024
 
@@ -172,7 +170,7 @@ class Client(object):
 
         if self.webdav.verbose:
             self.default_options['VERBOSE'] = self.webdav.verbose
-        
+
         if self.default_options:
             add_options(curl, self.default_options)
 
@@ -296,7 +294,7 @@ class Client(object):
 
             if int(code) == 200:
                 return True
-        
+
             return False
 
         except pycurl.error:
@@ -409,7 +407,7 @@ class Client(object):
                 }
 
                 if progress:
-                   options["PROGRESSFUNCTION"] = progress
+                    options["PROGRESSFUNCTION"] = progress
 
                 request = self.Request(options=options)
 
@@ -525,7 +523,7 @@ class Client(object):
                 }
 
                 if progress:
-                   options["PROGRESSFUNCTION"] = progress
+                    options["PROGRESSFUNCTION"] = progress
 
                 file_size = os.path.getsize(local_path)
                 if file_size > self.large_size:
@@ -994,7 +992,8 @@ class Client(object):
         for local_resource_name in listdir(local_directory):
 
             local_path = os.path.join(local_directory, local_resource_name)
-            remote_path = "{remote_directory}{resource_name}".format(remote_directory=urn.path(), resource_name=local_resource_name)
+            remote_path = "{remote_directory}{resource_name}".format(remote_directory=urn.path(),
+                                                                     resource_name=local_resource_name)
 
             if os.path.isdir(local_path):
                 self.upload_directory(remote_path, local_path, recursive=True)
@@ -1025,7 +1024,8 @@ class Client(object):
         for remote_resource_name in remote_resource_names:
 
             _local_path = os.path.join(local_directory, remote_resource_name)
-            _remote_path = "{remote_directory}{resource_name}".format(remote_directory=urn.path(), resource_name=remote_resource_name)
+            _remote_path = "{remote_directory}{resource_name}".format(remote_directory=urn.path(),
+                                                                      resource_name=remote_resource_name)
 
             remote_urn = Urn(_remote_path)
 
@@ -1048,7 +1048,6 @@ class Resource(object):
         return self.client.is_dir(self.urn.path())
 
     def rename(self, new_name):
-
         old_path = self.urn.path()
         parent_path = self.urn.parent()
         new_name = Urn(new_name).filename()
@@ -1058,19 +1057,16 @@ class Resource(object):
         self.urn = Urn(new_path)
 
     def move(self, remote_path):
-
         new_urn = Urn(remote_path)
         self.client.move(remote_path_from=self.urn.path(), remote_path_to=new_urn.path())
         self.urn = new_urn
 
     def copy(self, remote_path):
-
         urn = Urn(remote_path)
         self.client.copy(remote_path_from=self.urn.path(), remote_path_to=remote_path)
         return Resource(self.client, urn)
 
     def info(self, params=None):
-
         info = self.client.info(self.urn.path())
         if not params:
             return info
