@@ -360,7 +360,7 @@ class Client(object):
         else:
             self.download_file(local_path=local_path, remote_path=remote_path, progress=progress)
 
-    def download_directory(self, remote_path, local_path, progress=None):
+    def download_directory(self, remote_path, local_path, progress=None, recursive=False):
 
         urn = Urn(remote_path, directory=True)
 
@@ -375,7 +375,13 @@ class Client(object):
         for resource_name in self.list(urn.path()):
             _remote_path = "{parent}{name}".format(parent=urn.path(), name=resource_name)
             _local_path = os.path.join(local_path, resource_name)
-            self.download(local_path=_local_path, remote_path=_remote_path, progress=progress)
+            if self.is_dir(_remote_path):
+                if not os.path.isdir(_local_path):
+                    os.mkdir(_local_path)
+                if recursive:
+                    self.download_directory(_remote_path)
+            else:
+                self.download(local_path=_local_path, remote_path=_remote_path, progress=progress)
 
     def download_file(self, remote_path, local_path, progress=None):
 
@@ -463,7 +469,7 @@ class Client(object):
         else:
             self.upload_file(local_path=local_path, remote_path=remote_path, progress=progress)
 
-    def upload_directory(self, remote_path, local_path, progress=None):
+    def upload_directory(self, remote_path, local_path, progress=None, recursive=False):
 
         urn = Urn(remote_path, directory=True)
 
@@ -484,7 +490,11 @@ class Client(object):
         for resource_name in listdir(local_path):
             _remote_path = "{parent}{name}".format(parent=urn.path(), name=resource_name)
             _local_path = os.path.join(local_path, resource_name)
-            self.upload(local_path=_local_path, remote_path=_remote_path, progress=progress)
+            if os.path.isfile(_local_path):
+                self.upload(local_path=_local_path, remote_path=_remote_path, progress=progress)
+            elif os.path.isdir(_local_path):
+                if recursive:
+                    self.upload_directory(local_path=_local_path, remote_path=_remote_path, progress=progress)
 
     def upload_file(self, remote_path, local_path, progress=None):
 
@@ -987,13 +997,11 @@ class Client(object):
             remote_path = "{remote_directory}{resource_name}".format(remote_directory=urn.path(), resource_name=local_resource_name)
 
             if os.path.isdir(local_path):
-                if not self.check(remote_path=remote_path):
-                    self.mkdir(remote_path=remote_path)
-                self.push(remote_directory=remote_path, local_directory=local_path)
+                self.upload_directory(remote_path, local_path, recursive=True)
+            elif os.path.isfile(local_path):
+                self.upload(remote_path, local_path)
             else:
-                if local_resource_name in remote_resource_names:
-                    continue
-                self.upload_file(remote_path=remote_path, local_path=local_path)
+                raise AttributeError
 
     def pull(self, remote_directory, local_directory):
 
@@ -1016,24 +1024,15 @@ class Client(object):
 
         for remote_resource_name in remote_resource_names:
 
-            local_path = os.path.join(local_directory, remote_resource_name)
-            remote_path = "{remote_directory}{resource_name}".format(remote_directory=urn.path(), resource_name=remote_resource_name)
+            _local_path = os.path.join(local_directory, remote_resource_name)
+            _remote_path = "{remote_directory}{resource_name}".format(remote_directory=urn.path(), resource_name=remote_resource_name)
 
-            remote_urn = Urn(remote_path)
+            remote_urn = Urn(_remote_path)
 
             if self.is_dir(remote_urn.path()):
-                if not os.path.exists(local_path):
-                    os.mkdir(local_path)
-                self.pull(remote_directory=remote_path, local_directory=local_path)
+                self.download_directory(remote_path=_remote_path, local_path=_local_path, recursive=True)
             else:
-                if remote_resource_name in local_resource_names:
-                    continue
-                self.download_file(remote_path=remote_path, local_path=local_path)
-
-    def sync(self, remote_directory, local_directory):
-
-        self.pull(remote_directory=remote_directory, local_directory=local_directory)
-        self.push(remote_directory=remote_directory, local_directory=local_directory)
+                self.download(_remote_path, _local_path)
 
 
 class Resource(object):
